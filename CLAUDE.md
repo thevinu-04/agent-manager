@@ -23,3 +23,7 @@ Key routing rules:
 For Oxygen UI component guidelines and patterns, see [.claude/oxygen-ui/](.claude/oxygen-ui/) (`components.md`, `patterns.md`, `theming.md`, `migration.md`).
 
 For console UI/UX rules (page actions, create/edit pages, listings, empty states, forms), see [console/UX_GUIDELINES.md](console/UX_GUIDELINES.md).
+
+## Agent Portal
+
+For Agent Portal work (publishing agents, the portal catalog and chat), start at [docs/README.md](docs/README.md). The decided architecture is in [docs/08-agent-portal-gap-analysis.md](docs/08-agent-portal-gap-analysis.md) §8.2.

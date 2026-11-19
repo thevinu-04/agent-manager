@@ -99,3 +99,9 @@ samples/insurance-support-agent/web/dist/
 samples/insurance-support-agent/web/*.tsbuildinfo
 samples/insurance-support-agent/agent/.venv/
 samples/insurance-support-agent/**/__pycache__/
+
+
+# Generated files
+docs/
+agent-manager-service/CLAUDE.md
+console/apps/agent-portal/CLAUDE.md

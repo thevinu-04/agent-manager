@@ -10379,6 +10379,344 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /orgs/{orgName}/projects/{projName}/agents/{agentName}/environments/{envID}/publication:
+    parameters: *agentCardPathParams
+    get:
+      tags:
+        - Agent Publications
+      summary: Get whether the agent is published to the Agent Portal from this environment
+      description: >-
+        Returns the publication, if any, and the eligibility checks the agent must pass to be
+        published from this environment. Unpublished agents return 200 with published false.
+      operationId: getAgentPublication
+      responses:
+        "200":
+          description: Publication state and eligibility
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPublicationStatusResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Agent or environment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      tags:
+        - Agent Publications
+      summary: Publish the agent to the Agent Portal, or update how it is listed
+      description: >-
+        Lists the agent in the organization's Agent Portal catalog. Only production environments
+        qualify, and the agent must pass every eligibility check. Publishing adds the portal's origin
+        to the agent's CORS allowed origins in this environment if it is missing. An agent has at
+        most one publication; publishing from a second production environment is a conflict.
+      operationId: publishAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishAgentRequest"
+      responses:
+        "200":
+          description: Published or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPublication"
+        "400":
+          description: >-
+            Invalid listing details, or the agent is not eligible (non-production environment, not a
+            chat-api agent, not deployed, API-key security off, or CORS disabled); the message names the failed check
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Missing the agent update or production environment permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Agent or environment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The agent is already published from another environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: The audit trail is unavailable; nothing was changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Agent Publications
+      summary: Remove the agent from the Agent Portal
+      description: >-
+        Removes the agent from the portal catalog; portal users can no longer get chat keys for it.
+        The portal origin is removed from the agent's CORS only if publishing added it.
+      operationId: unpublishAgent
+      responses:
+        "204":
+          description: Unpublished
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Missing the agent update or production environment permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The agent is not published from this environment, or the agent or environment does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: The audit trail is unavailable; nothing was changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orgs/{orgName}/portal/agents:
+    parameters:
+      - name: orgName
+        in: path
+        required: true
+        description: Organization name/handle
+        schema:
+          type: string
+    get:
+      tags:
+        - Agent Portal
+      summary: List agents published to the Agent Portal
+      description: Every agent published in the organization, newest update first.
+      operationId: listPortalAgents
+      parameters:
+        - name: search
+          in: query
+          description: Case-insensitive match on display name or description
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: tag
+          in: query
+          description: Only agents with this tag
+          required: false
+          schema:
+            type: string
+            maxLength: 32
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of results to skip
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        "200":
+          description: Published agents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalAgentListResponse"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Missing the agent-portal:read permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orgs/{orgName}/portal/agents/{publicationId}:
+    parameters: &portalAgentPathParams
+      - name: orgName
+        in: path
+        required: true
+        description: Organization name/handle
+        schema:
+          type: string
+      - name: publicationId
+        in: path
+        required: true
+        description: Publication ID
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags:
+        - Agent Portal
+      summary: Get a published agent
+      operationId: getPortalAgent
+      responses:
+        "200":
+          description: The published agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalAgent"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Missing the agent-portal:read permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such published agent in the organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orgs/{orgName}/portal/agents/{publicationId}/chat-key:
+    parameters: *portalAgentPathParams
+    post:
+      tags:
+        - Agent Portal
+      summary: Issue or rotate the caller's short-lived chat key for a published agent
+      description: >-
+        Mints a 10-minute API key for the calling user and this agent, rotating the user's previous
+        one, and returns it with the agent's chat URL and a signed user assertion. The portal calls
+        the agent's gateway directly with it; chat traffic never passes through this service.
+        Chat keys are hidden from the agent's API key listings.
+      operationId: issuePortalChatKey
+      responses:
+        "200":
+          description: Chat key issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalChatKeyResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Missing the agent-portal:chat permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such published agent in the organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >-
+            The agent is published but unavailable: it is suspended or undeployed, or its CORS no
+            longer allows the portal's origin. No key was issued; the agent's owner must fix it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: No gateway serves the agent's environment, or the audit trail is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /orgs/{orgName}/projects/{projName}/agents/{agentName}/monitors:
     get:
       summary: List all evaluation monitors for an agent
@@ -15611,6 +15949,218 @@ components:
           description: >-
             Header value: at most 8192 bytes, with no quote, "%", control character (including line breaks and tabs) or "{{". Omit it to keep
             the stored secret.
+    PublishAgentRequest:
+      type: object
+      description: How the agent appears in the Agent Portal catalog.
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Name shown to portal users.
+        description:
+          type: string
+          maxLength: 1000
+          description: Plain-text summary of what the agent helps with, shown on its card and page.
+        iconUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Optional https URL of a square icon. Portal cards fall back to the display name's initials.
+        tags:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          description: Optional labels portal users can filter by, such as "HR" or "IT".
+          items:
+            type: string
+            minLength: 1
+            maxLength: 32
+            pattern: "^[A-Za-z0-9][A-Za-z0-9 _-]*$"
+    AgentPublication:
+      type: object
+      description: An agent published to the Agent Portal from one production environment.
+      required:
+        - id
+        - projectName
+        - agentName
+        - environmentName
+        - displayName
+        - description
+        - tags
+        - publishedBy
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Publication ID; the portal addresses agents by it.
+        projectName:
+          type: string
+        agentName:
+          type: string
+        environmentName:
+          type: string
+          description: The production environment the agent is published from.
+        displayName:
+          type: string
+        description:
+          type: string
+        iconUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        publishedBy:
+          type: string
+          description: User ID of whoever last published or updated the publication.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AgentPublicationEligibilityCheck:
+      type: object
+      required:
+        - id
+        - passed
+      properties:
+        id:
+          type: string
+          enum: [PRODUCTION_ENVIRONMENT, CHAT_API, DEPLOYED, API_KEY_SECURITY, CORS_ENABLED]
+          description: >-
+            Which requirement this is. PRODUCTION_ENVIRONMENT: the environment is production tier.
+            CHAT_API: the agent is an internal agent with the chat-api interface. DEPLOYED: the agent
+            has an active deployment in the environment. API_KEY_SECURITY: API-key security is on.
+            CORS_ENABLED: CORS is enabled for the agent in the environment.
+        passed:
+          type: boolean
+        reason:
+          type: string
+          description: Why the check failed, in words an owner can act on. Empty when it passed.
+    AgentPublicationEligibility:
+      type: object
+      required:
+        - eligible
+        - checks
+      properties:
+        eligible:
+          type: boolean
+          description: True when every check passed.
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPublicationEligibilityCheck"
+    AgentPublicationStatusResponse:
+      type: object
+      description: Whether the agent is published from this environment, and whether it could be.
+      required:
+        - published
+        - eligibility
+      properties:
+        published:
+          type: boolean
+        publication:
+          $ref: "#/components/schemas/AgentPublication"
+        eligibility:
+          $ref: "#/components/schemas/AgentPublicationEligibility"
+    PortalAgent:
+      type: object
+      description: A published agent as portal users see it.
+      required:
+        - id
+        - displayName
+        - description
+        - tags
+        - updatedAt
+        - available
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Publication ID.
+        displayName:
+          type: string
+        description:
+          type: string
+        iconUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+        available:
+          type: boolean
+          description: >-
+            False when the agent is suspended or undeployed, or its CORS no longer allows the
+            portal's origin. The agent stays listed so portal users can see it, but a chat key
+            request returns 409 until its owner fixes it.
+    PortalAgentListResponse:
+      type: object
+      required:
+        - agents
+        - tags
+        - total
+        - limit
+        - offset
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalAgent"
+        tags:
+          type: array
+          description: Every tag used by a published agent in the organization, for the tag filter.
+          items:
+            type: string
+        total:
+          type: integer
+          description: Total number of published agents matching the query
+        limit:
+          type: integer
+        offset:
+          type: integer
+    PortalChatKeyResponse:
+      type: object
+      description: >-
+        What the portal needs to chat with the agent directly through its gateway. The browser sends
+        POST {chatUrl} with the X-API-Key header and the chat-api body, passing userAssertion in
+        context.user_assertion. Nothing here is stored by the portal beyond the browser tab.
+      required:
+        - apiKey
+        - expiresAt
+        - gatewayConnected
+        - chatUrl
+        - userAssertion
+      properties:
+        apiKey:
+          type: string
+          description: Short-lived API key for this user and agent, sent as the X-API-Key header.
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the key and the assertion expire (RFC 3339); the portal requests a new key before then.
+        gatewayConnected:
+          type: boolean
+          description: >-
+            Whether every gateway serving the agent's environment had a live connection to the control
+            plane when the key was issued. When false, the key works only once the gateway reconnects.
+        chatUrl:
+          type: string
+          description: The agent's chat endpoint on the production gateway.
+        userAssertion:
+          type: string
+          description: >-
+            RS256 JWT identifying the portal user to the agent (claims sub, username, ou_id, agent, env,
+            exp). Agents can verify it with the platform's /auth/external/jwks.json.
     AgentCardCORSConfig:
       type: object
       description: >-
