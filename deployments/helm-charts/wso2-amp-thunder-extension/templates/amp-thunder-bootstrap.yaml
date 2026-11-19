@@ -549,6 +549,13 @@ data:
         description: Source repository browsing
         actions:
           - { name: Read, handle: read, description: "Browse repository branches and commits" }
+      - name: Agent Portal
+        handle: agent-portal
+        parent: amp
+        description: Agents published to the Agent Portal
+        actions:
+          - { name: Read, handle: read, description: "Browse and view the agents published to the Agent Portal" }
+          - { name: Chat, handle: chat, description: "Chat with agents published to the Agent Portal" }
 
   60-mcp-resource-servers.yaml: |
   {{- $firstMCPResourceServer := true }}
@@ -740,6 +747,8 @@ data:
           - "amp:repository:read"
           - "amp:profile:read"
           - "amp:profile:update-attributes"
+          - "amp:agent-portal:read"
+          - "amp:agent-portal:chat"
     {{- range $server := .Values.thunder.bootstrap.mcpResourceServers }}
     {{- if index $.Values.thunder.bootstrap $server.baseUrlValue }}
       - resourceServerId: {{ $server.id | quote }}
@@ -837,6 +846,8 @@ data:
           - "amp:repository:read"
           - "amp:profile:read"
           - "amp:profile:update-attributes"
+          - "amp:agent-portal:read"
+          - "amp:agent-portal:chat"
     {{- range $server := .Values.thunder.bootstrap.mcpResourceServers }}
     {{- if index $.Values.thunder.bootstrap $server.baseUrlValue }}
       - resourceServerId: {{ $server.id | quote }}
@@ -1045,6 +1056,23 @@ data:
     {{- end }}
     {{- end }}
     {{- end }}
+
+  74-amp-role-agent-portal-user.yaml: |
+    # Agent Portal staff: discover and chat with published agents, nothing in the console.
+    # No MCP resource-server permissions. Numbered 74 because 65-73 are taken.
+    resource_type: role
+    id: amp-role-agent-portal-user
+    name: Agent Portal User
+    description: "Agent Portal access: browse the agents published to the portal and chat with them"
+    ouHandle: default
+    permissions:
+      - resourceServerId: amp-resource-server
+        permissions:
+          - "amp:org:view"
+          - "amp:agent-portal:read"
+          - "amp:agent-portal:chat"
+          - "amp:profile:read"
+          - "amp:profile:update-attributes"
 
   65-amp-group-admins.yaml: |
     resource_type: group

@@ -50,6 +50,7 @@ var chartRoleDocs = map[string]string{
 	"62-amp-role-developer.yaml":         RoleDeveloper,
 	"63-amp-role-ai-lead.yaml":           RoleAILead,
 	"64-amp-role-platform-engineer.yaml": RolePlatformEngineer,
+	"74-amp-role-agent-portal-user.yaml": RoleAgentPortalUser,
 }
 
 // configMapKeyLine matches the start of any ConfigMap data entry, which is what

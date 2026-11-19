@@ -21,6 +21,7 @@ var predefinedRoles = map[string]bool{
 	"Developer":           true,
 	"AI Lead":             true,
 	"Platform Engineer":   true,
+	"Agent Portal User":   true,
 	"Administrator":       true,
 }
 

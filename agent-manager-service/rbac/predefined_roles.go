@@ -21,6 +21,9 @@ const (
 	RoleDeveloper        = "Developer"
 	RoleAILead           = "AI Lead"
 	RolePlatformEngineer = "Platform Engineer"
+	// RoleAgentPortalUser is for staff who only discover and chat with published agents in the
+	// Agent Portal. It holds no console permissions.
+	RoleAgentPortalUser = "Agent Portal User"
 )
 
 // PredefinedRolePermissions maps each predefined role name to its set of permissions.
@@ -57,6 +60,7 @@ var PredefinedRolePermissions = map[string][]Permission{
 		AgentIdentityRead, AgentIdentityCreate, AgentIdentityUpdate, AgentIdentityDelete,
 		CatalogRead, RepositoryRead,
 		ProfileRead, ProfileUpdateAttributes,
+		AgentPortalRead, AgentPortalChat,
 	},
 
 	RoleDeveloper: {
@@ -85,6 +89,8 @@ var PredefinedRolePermissions = map[string][]Permission{
 		AgentIdentityRead,
 		CatalogRead, RepositoryRead,
 		ProfileRead, ProfileUpdateAttributes,
+		// Owners open the portal to try the agents they publish.
+		AgentPortalRead, AgentPortalChat,
 	},
 
 	RoleAILead: {
@@ -132,6 +138,12 @@ var PredefinedRolePermissions = map[string][]Permission{
 		ObservabilityTraceRead, ObservabilityLogRead, ObservabilityBuildLogRead, ObservabilityMetricRead,
 		AgentIdentityRead, AgentIdentityCreate, AgentIdentityUpdate, AgentIdentityDelete,
 		CatalogRead,
+		ProfileRead, ProfileUpdateAttributes,
+	},
+
+	RoleAgentPortalUser: {
+		OrgView,
+		AgentPortalRead, AgentPortalChat,
 		ProfileRead, ProfileUpdateAttributes,
 	},
 }

@@ -263,3 +263,11 @@ const (
 	ProfileRead             Permission = "profile:read"
 	ProfileUpdateAttributes Permission = "profile:update-attributes"
 )
+
+// Agent Portal permissions: what portal users may do with published agents.
+const (
+	// AgentPortalRead lists and views the agents published in the organization.
+	AgentPortalRead Permission = "agent-portal:read"
+	// AgentPortalChat issues the short-lived key a portal user chats with an agent through.
+	AgentPortalChat Permission = "agent-portal:chat"
+)

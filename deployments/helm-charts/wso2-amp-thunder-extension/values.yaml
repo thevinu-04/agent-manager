@@ -318,6 +318,8 @@ thunder:
       - "amp:repository:read"
       - "amp:profile:read"
       - "amp:profile:update-attributes"
+      - "amp:agent-portal:read"
+      - "amp:agent-portal:chat"
       - "amp:scope:create"
       - "amp:scope:read"
       - "amp:scope:update"
@@ -355,6 +357,7 @@ thunder:
         - 72-am-observer-client.yaml
         - 73-am-obs-mcp-client.yaml
         - 73-amp-csp-config.yaml
+        - 74-amp-role-agent-portal-user.yaml
     # Observer Resource Reader Client configuration (for observability plane to read resources)
     observerResourceReaderClient:
       clientId: "openchoreo-observer-resource-reader-client" # clusterauthzrolebinding is already created with this clientId by openchoreo, so it should not be changed unless the corresponding ClusterAuthzRoleBinding is also updated

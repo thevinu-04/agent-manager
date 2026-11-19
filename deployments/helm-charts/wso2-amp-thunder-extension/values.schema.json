@@ -1308,6 +1308,8 @@
                 "amp:repository:read",
                 "amp:profile:read",
                 "amp:profile:update-attributes",
+                "amp:agent-portal:read",
+                "amp:agent-portal:chat",
                 "amp:scope:create",
                 "amp:scope:read",
                 "amp:scope:update",
@@ -1361,7 +1363,8 @@
                     "71-amp-cors-config.yaml",
                     "72-am-observer-client.yaml",
                     "73-am-obs-mcp-client.yaml",
-                    "73-amp-csp-config.yaml"
+                    "73-amp-csp-config.yaml",
+                    "74-amp-role-agent-portal-user.yaml"
                   ],
                   "description": "Bootstrap files to mount from the ConfigMap. Leave empty to mount the whole ConfigMap, which replaces the chart's defaults.",
                   "items": {
