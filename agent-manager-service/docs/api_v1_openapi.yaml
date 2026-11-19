@@ -10667,7 +10667,7 @@ paths:
       summary: Issue or rotate the caller's short-lived chat key for a published agent
       description: >-
         Mints a 10-minute API key for the calling user and this agent, rotating the user's previous
-        one, and returns it with the agent's chat URL and a signed user assertion. The portal calls
+        one, and returns it with the agent's chat URL. The portal calls
         the agent's gateway directly with it; chat traffic never passes through this service.
         Chat keys are hidden from the agent's API key listings.
       operationId: issuePortalChatKey
@@ -16132,14 +16132,13 @@ components:
       type: object
       description: >-
         What the portal needs to chat with the agent directly through its gateway. The browser sends
-        POST {chatUrl} with the X-API-Key header and the chat-api body, passing userAssertion in
-        context.user_assertion. Nothing here is stored by the portal beyond the browser tab.
+        POST {chatUrl} with the X-API-Key header and the chat-api body. Nothing here is stored by the
+        portal beyond the browser tab.
       required:
         - apiKey
         - expiresAt
         - gatewayConnected
         - chatUrl
-        - userAssertion
       properties:
         apiKey:
           type: string
@@ -16147,7 +16146,7 @@ components:
         expiresAt:
           type: string
           format: date-time
-          description: When the key and the assertion expire (RFC 3339); the portal requests a new key before then.
+          description: When the key expires (RFC 3339); the portal requests a new key before then.
         gatewayConnected:
           type: boolean
           description: >-
@@ -16156,11 +16155,6 @@ components:
         chatUrl:
           type: string
           description: The agent's chat endpoint on the production gateway.
-        userAssertion:
-          type: string
-          description: >-
-            RS256 JWT identifying the portal user to the agent (claims sub, username, ou_id, agent, env,
-            exp). Agents can verify it with the platform's /auth/external/jwks.json.
     AgentCardCORSConfig:
       type: object
       description: >-

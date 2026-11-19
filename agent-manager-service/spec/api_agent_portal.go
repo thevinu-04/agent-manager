@@ -185,7 +185,7 @@ func (r ApiIssuePortalChatKeyRequest) Execute() (*PortalChatKeyResponse, *http.R
 /*
 IssuePortalChatKey Issue or rotate the caller's short-lived chat key for a published agent
 
-Mints a 10-minute API key for the calling user and this agent, rotating the user's previous one, and returns it with the agent's chat URL and a signed user assertion. The portal calls the agent's gateway directly with it; chat traffic never passes through this service. Chat keys are hidden from the agent's API key listings.
+Mints a 10-minute API key for the calling user and this agent, rotating the user's previous one, and returns it with the agent's chat URL. The portal calls the agent's gateway directly with it; chat traffic never passes through this service. Chat keys are hidden from the agent's API key listings.
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param orgName Organization name/handle

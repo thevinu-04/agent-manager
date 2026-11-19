@@ -18,31 +18,28 @@ import (
 // checks if the PortalChatKeyResponse type satisfies the MappedNullable interface at compile time
 var _ MappedNullable = &PortalChatKeyResponse{}
 
-// PortalChatKeyResponse What the portal needs to chat with the agent directly through its gateway. The browser sends POST {chatUrl} with the X-API-Key header and the chat-api body, passing userAssertion in context.user_assertion. Nothing here is stored by the portal beyond the browser tab.
+// PortalChatKeyResponse What the portal needs to chat with the agent directly through its gateway. The browser sends POST {chatUrl} with the X-API-Key header and the chat-api body. Nothing here is stored by the portal beyond the browser tab.
 type PortalChatKeyResponse struct {
 	// Short-lived API key for this user and agent, sent as the X-API-Key header.
 	ApiKey string `json:"apiKey"`
-	// When the key and the assertion expire (RFC 3339); the portal requests a new key before then.
+	// When the key expires (RFC 3339); the portal requests a new key before then.
 	ExpiresAt time.Time `json:"expiresAt"`
 	// Whether every gateway serving the agent's environment had a live connection to the control plane when the key was issued. When false, the key works only once the gateway reconnects.
 	GatewayConnected bool `json:"gatewayConnected"`
 	// The agent's chat endpoint on the production gateway.
 	ChatUrl string `json:"chatUrl"`
-	// RS256 JWT identifying the portal user to the agent (claims sub, username, ou_id, agent, env, exp). Agents can verify it with the platform's /auth/external/jwks.json.
-	UserAssertion string `json:"userAssertion"`
 }
 
 // NewPortalChatKeyResponse instantiates a new PortalChatKeyResponse object
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewPortalChatKeyResponse(apiKey string, expiresAt time.Time, gatewayConnected bool, chatUrl string, userAssertion string) *PortalChatKeyResponse {
+func NewPortalChatKeyResponse(apiKey string, expiresAt time.Time, gatewayConnected bool, chatUrl string) *PortalChatKeyResponse {
 	this := PortalChatKeyResponse{}
 	this.ApiKey = apiKey
 	this.ExpiresAt = expiresAt
 	this.GatewayConnected = gatewayConnected
 	this.ChatUrl = chatUrl
-	this.UserAssertion = userAssertion
 	return &this
 }
 
@@ -150,30 +147,6 @@ func (o *PortalChatKeyResponse) SetChatUrl(v string) {
 	o.ChatUrl = v
 }
 
-// GetUserAssertion returns the UserAssertion field value
-func (o *PortalChatKeyResponse) GetUserAssertion() string {
-	if o == nil {
-		var ret string
-		return ret
-	}
-
-	return o.UserAssertion
-}
-
-// GetUserAssertionOk returns a tuple with the UserAssertion field value
-// and a boolean to check if the value has been set.
-func (o *PortalChatKeyResponse) GetUserAssertionOk() (*string, bool) {
-	if o == nil {
-		return nil, false
-	}
-	return &o.UserAssertion, true
-}
-
-// SetUserAssertion sets field value
-func (o *PortalChatKeyResponse) SetUserAssertion(v string) {
-	o.UserAssertion = v
-}
-
 func (o PortalChatKeyResponse) MarshalJSON() ([]byte, error) {
 	toSerialize, err := o.ToMap()
 	if err != nil {
@@ -188,7 +161,6 @@ func (o PortalChatKeyResponse) ToMap() (map[string]interface{}, error) {
 	toSerialize["expiresAt"] = o.ExpiresAt
 	toSerialize["gatewayConnected"] = o.GatewayConnected
 	toSerialize["chatUrl"] = o.ChatUrl
-	toSerialize["userAssertion"] = o.UserAssertion
 	return toSerialize, nil
 }
 
