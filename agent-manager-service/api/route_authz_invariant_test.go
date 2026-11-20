@@ -196,6 +196,9 @@ var declaredButUnenforcedPermissions = map[string]string{
 	"LLMProviderConnect":            "NOT ENFORCED: no route consults it",
 	"MCPServerConfigureGuardrail":   "NOT ENFORCED: no route consults it",
 	"MCPServerAPIKeyManage":         "NOT ENFORCED: no route consults it",
+	// Remove both when the portal catalog and chat-key routes land (Agent Portal M2 #4).
+	"AgentPortalRead": "NOT YET ENFORCED: the portal catalog routes that consult it are still being built",
+	"AgentPortalChat": "NOT YET ENFORCED: the portal chat-key route that consults it is still being built",
 }
 
 // TestSecurityInvariantEveryPermissionIsEnforced fails when a declared
@@ -283,6 +286,7 @@ var predefinedRoleHandles = map[string]string{
 	"RoleDeveloper":        "developer",
 	"RoleAILead":           "ai-lead",
 	"RolePlatformEngineer": "platform-engineer",
+	"RoleAgentPortalUser":  "agent-portal-user",
 }
 
 // TestSecurityInvariantPredefinedRolesMatchThunderBootstrap closes the policy

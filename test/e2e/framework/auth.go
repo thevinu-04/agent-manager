@@ -62,7 +62,8 @@ const ampScopes = "amp:agent-identity:create amp:agent-identity:delete amp:agent
 	"amp:project:create amp:project:delete amp:project:read amp:project:update amp:repository:read " +
 	"amp:role:create amp:role:delete amp:role:read amp:role:update " +
 	"amp:scope:create amp:scope:delete amp:scope:read amp:scope:update " +
-	"amp:profile:read amp:profile:update-attributes"
+	"amp:profile:read amp:profile:update-attributes " +
+	"amp:agent-portal:read amp:agent-portal:chat"
 
 // FetchToken obtains an OAuth2 access token from the Thunder IDP using the
 // client_credentials grant type, carrying the full ampScopes superset. It
