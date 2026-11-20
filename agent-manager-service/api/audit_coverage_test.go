@@ -53,6 +53,7 @@ var controllerConstructors = []any{
 	controllers.NewAgentAPIKeyController,
 	controllers.NewA2AAgentCardController,
 	controllers.NewA2AProxyController,
+	controllers.NewAgentPublicationController,
 	controllers.NewLLMProxyDeploymentController,
 	controllers.NewMCPProxyController,
 	controllers.NewProjectMCPProxyController,

@@ -338,6 +338,15 @@ var (
 	ErrSourceAgentNotFound       = errors.New("source agent not found; cannot publish a kind from a deleted agent")
 )
 
+// Agent Portal publication errors.
+var (
+	// ErrAgentNotPublished means the agent is not published to the Agent Portal from the environment. Maps to 404.
+	ErrAgentNotPublished = errors.New("the agent is not published to the Agent Portal from this environment")
+	// ErrAgentPublishedElsewhere means the agent is published from another environment; it must be
+	// unpublished there first. Maps to 409.
+	ErrAgentPublishedElsewhere = errors.New("the agent is already published to the Agent Portal from another environment")
+)
+
 // Project-scoped MCP proxy errors.
 var (
 	// ErrMCPProxyHandleInUse means the handle belongs to an org-level proxy, another

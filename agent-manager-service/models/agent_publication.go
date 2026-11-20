@@ -46,6 +46,53 @@ type AgentPublication struct {
 
 func (AgentPublication) TableName() string { return "agent_publications" }
 
+// AgentPublicationRequest is how an owner wants the agent listed in the portal catalog.
+type AgentPublicationRequest struct {
+	DisplayName string
+	Description string
+	IconURL     string
+	Tags        []string
+}
+
+// Eligibility check IDs, as the publication API reports them.
+const (
+	PublicationCheckProductionEnvironment = "PRODUCTION_ENVIRONMENT"
+	PublicationCheckChatAPI               = "CHAT_API"
+	PublicationCheckDeployed              = "DEPLOYED"
+	PublicationCheckAPIKeySecurity        = "API_KEY_SECURITY"
+	PublicationCheckCORSEnabled           = "CORS_ENABLED"
+)
+
+// AgentPublicationCheck is one requirement an agent must meet to be published. Reason says, in
+// words an owner can act on, why it failed; it is empty when the check passed.
+type AgentPublicationCheck struct {
+	ID     string
+	Passed bool
+	Reason string
+}
+
+// AgentPublicationStatus is whether the agent is published from one environment, and whether it could be.
+type AgentPublicationStatus struct {
+	// Publication is nil when the agent is not published from the environment.
+	Publication *AgentPublication
+	Checks      []AgentPublicationCheck
+}
+
+// Eligible is true when every check passed.
+func (s *AgentPublicationStatus) Eligible() bool {
+	return FirstFailedPublicationCheck(s.Checks) == nil
+}
+
+// FirstFailedPublicationCheck returns the first check that failed, or nil when all passed.
+func FirstFailedPublicationCheck(checks []AgentPublicationCheck) *AgentPublicationCheck {
+	for i := range checks {
+		if !checks[i].Passed {
+			return &checks[i]
+		}
+	}
+	return nil
+}
+
 // AgentPublicationFilter narrows the portal catalog. Empty fields match everything.
 type AgentPublicationFilter struct {
 	// Search is a case-insensitive substring of the display name or description.

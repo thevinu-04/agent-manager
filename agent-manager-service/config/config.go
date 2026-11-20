@@ -68,6 +68,10 @@ type Config struct {
 	KeyManagerConfigurations KeyManagerConfigurations
 	IsOnPremDeployment       bool
 	ServerPublicURL          string
+	// PortalPublicOrigin is the Agent Portal's browser origin (scheme://host[:port]). Publishing an
+	// agent adds it to the agent's CORS allowed origins. Empty means no portal is deployed, and
+	// publishing is refused.
+	PortalPublicOrigin string
 
 	// GrowthAnalytics configures feature-usage telemetry export. A no-op
 	// unless GrowthAnalytics.Enabled is true and MoesifCollectorBaseURL is

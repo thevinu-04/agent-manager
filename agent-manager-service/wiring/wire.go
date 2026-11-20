@@ -99,6 +99,7 @@ var serviceProviderSet = wire.NewSet(
 	services.NewA2APublisher,
 	services.NewA2AProxyService,
 	ProvideA2AProxyHooks,
+	ProvideAgentPublicationService,
 	services.NewEvaluatorManagerService,
 	services.NewEnvironmentService,
 	ProvidePlatformGatewayService,
@@ -162,6 +163,7 @@ var controllerProviderSet = wire.NewSet(
 	controllers.NewAgentAPIKeyController,
 	controllers.NewA2AAgentCardController,
 	controllers.NewA2AProxyController,
+	controllers.NewAgentPublicationController,
 	controllers.NewLLMProxyDeploymentController,
 	controllers.NewMCPProxyController,
 	controllers.NewProjectMCPProxyController,
@@ -422,6 +424,7 @@ var repositoryProviderSet = wire.NewSet(
 	ProvideA2AAgentCardRepository,
 	repositories.NewMCPCapabilityDiscoveryRepository,
 	ProvideA2AProxyRepository,
+	ProvideAgentPublicationRepository,
 	ProvideArtifactRepository,
 	ProvideScoreRepository,
 	ProvideCatalogRepository,
@@ -588,6 +591,23 @@ func ProvideA2AAgentCardRepository(db *gorm.DB) repositories.A2AAgentCardReposit
 
 func ProvideA2AProxyRepository(db *gorm.DB) repositories.A2AProxyRepository {
 	return repositories.NewA2AProxyRepository(db)
+}
+
+func ProvideAgentPublicationRepository(db *gorm.DB) repositories.AgentPublicationRepository {
+	return repositories.NewAgentPublicationRepository(db)
+}
+
+// ProvideAgentPublicationService passes the portal origin from config and gives the service only
+// the deploy-settings update it needs from the agent service.
+func ProvideAgentPublicationService(
+	cfg *config.Config,
+	repo repositories.AgentPublicationRepository,
+	agentConfigRepo repositories.AgentConfigRepository,
+	ocClient occlient.OpenChoreoClient,
+	agentService services.AgentManagerService,
+	logger *slog.Logger,
+) services.AgentPublicationService {
+	return services.NewAgentPublicationService(repo, agentConfigRepo, ocClient, agentService, cfg.PortalPublicOrigin, logger)
 }
 
 // ProvideA2AProxyHooks gives the card service the proxy hooks only, not the whole proxy service.

@@ -177,6 +177,8 @@ func loadEnvs() {
 	}
 	config.IsOnPremDeployment = r.readOptionalBool("IS_ON_PREM_DEPLOYMENT", true)
 	config.ServerPublicURL = r.readOptionalString("SERVER_PUBLIC_URL", "")
+	// A trailing slash is trimmed: a CORS origin never has one, and the gateway matches exactly.
+	config.PortalPublicOrigin = strings.TrimSuffix(r.readOptionalString("PORTAL_PUBLIC_ORIGIN", ""), "/")
 	config.GrowthAnalytics = GrowthAnalyticsConfig{
 		Enabled:                   r.readOptionalBool("MOESIF_ENABLED", false),
 		ConsoleEnabled:            r.readOptionalBool("CONSOLE_ANALYTICS_ENABLED", false),
@@ -435,6 +437,7 @@ func loadEnvs() {
 
 	validateOAuthAuthorizationServers(config, r)
 	validateServerPublicURL(config, r)
+	validatePortalPublicOrigin(config, r)
 	validateInstrumentationURL(config, r)
 	validateObserverURLs(config, r)
 	validateGrowthAnalyticsConfig(config)
@@ -760,6 +763,24 @@ func validateOpenChoreoBuildWorkflowKind(cfg *Config, r *configReader) {
 			"OPEN_CHOREO_BUILD_WORKFLOW_KIND must be empty, \"Workflow\" or \"ClusterWorkflow\", got %q",
 			cfg.OpenChoreo.BuildWorkflowKind,
 		))
+	}
+}
+
+// validatePortalPublicOrigin accepts an empty value (no portal) or a bare http(s) origin: it is
+// compared with CORS allowed origins, so a path, query or fragment could never match.
+func validatePortalPublicOrigin(cfg *Config, r *configReader) {
+	if cfg.PortalPublicOrigin == "" {
+		return
+	}
+	u, err := url.Parse(cfg.PortalPublicOrigin)
+	if err != nil {
+		r.errors = append(r.errors, fmt.Errorf("PORTAL_PUBLIC_ORIGIN %q is not a valid URL: %w", cfg.PortalPublicOrigin, err))
+		return
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+		u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		r.errors = append(r.errors, fmt.Errorf(
+			"PORTAL_PUBLIC_ORIGIN %q must be an origin such as https://portal.example.com, with no path", cfg.PortalPublicOrigin))
 	}
 }
 

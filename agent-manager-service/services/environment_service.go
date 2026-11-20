@@ -109,12 +109,13 @@ type environmentService struct {
 	a2aCardRepo        repositories.A2AAgentCardRepository
 	a2aPublisher       *A2APublisher
 	agentConfigRepo    repositories.AgentConfigRepository
+	publicationRepo    repositories.AgentPublicationRepository
 	cleanupAttempts    int
 	cleanupBackoff     time.Duration
 }
 
 // NewEnvironmentService creates a new environment service
-func NewEnvironmentService(logger *slog.Logger, gatewayRepo repositories.GatewayRepository, ocClient occlient.OpenChoreoClient, thunderProber thundersvc.Prober, agentConfigService AgentConfigurationService, envThunderRepo repositories.EnvThunderSystemClientRepository, envThunderURLRepo repositories.EnvThunderURLRepository, encryptionKey []byte, a2aCardRepo repositories.A2AAgentCardRepository, a2aPublisher *A2APublisher, agentConfigRepo repositories.AgentConfigRepository) EnvironmentService {
+func NewEnvironmentService(logger *slog.Logger, gatewayRepo repositories.GatewayRepository, ocClient occlient.OpenChoreoClient, thunderProber thundersvc.Prober, agentConfigService AgentConfigurationService, envThunderRepo repositories.EnvThunderSystemClientRepository, envThunderURLRepo repositories.EnvThunderURLRepository, encryptionKey []byte, a2aCardRepo repositories.A2AAgentCardRepository, a2aPublisher *A2APublisher, agentConfigRepo repositories.AgentConfigRepository, publicationRepo repositories.AgentPublicationRepository) EnvironmentService {
 	return &environmentService{
 		logger:             logger,
 		gatewayRepo:        gatewayRepo,
@@ -127,6 +128,7 @@ func NewEnvironmentService(logger *slog.Logger, gatewayRepo repositories.Gateway
 		a2aCardRepo:        a2aCardRepo,
 		a2aPublisher:       a2aPublisher,
 		agentConfigRepo:    agentConfigRepo,
+		publicationRepo:    publicationRepo,
 		cleanupAttempts:    envCleanupAttempts,
 		cleanupBackoff:     envCleanupBackoff,
 	}
@@ -427,6 +429,13 @@ func (s *environmentService) envCleanupSteps(ctx context.Context, ouID, name str
 			name:   "Agent config cleanup",
 			failed: "Environment deleted but its agent configs were not removed; repeat the DELETE before re-creating the environment to retry",
 			run:    func(ctx context.Context) error { return s.agentConfigRepo.DeleteForEnvironment(ctx, ouID, name) },
+		})
+	}
+	if s.publicationRepo != nil && envUUID != uuid.Nil {
+		steps = append(steps, envCleanupStep{
+			name:   "Agent Portal publication cleanup",
+			failed: "Environment deleted but its agents are still listed in the Agent Portal; repeat the DELETE to retry",
+			run:    func(ctx context.Context) error { return s.publicationRepo.DeleteForEnvironment(ctx, ouID, envUUID) },
 		})
 	}
 	if s.a2aCardRepo == nil && s.a2aPublisher == nil {

@@ -110,6 +110,7 @@ type agentManagerService struct {
 	gatewayEventsService      *GatewayEventsService
 	exposure                  *AgentExposurePublisher
 	restAgentKind             *RestAgentKind
+	publicationRepo           repositories.AgentPublicationRepository
 	logger                    *slog.Logger
 }
 
@@ -137,6 +138,7 @@ func NewAgentManagerService(
 	gatewayEventsService *GatewayEventsService,
 	exposure *AgentExposurePublisher,
 	restAgentKind *RestAgentKind,
+	publicationRepo repositories.AgentPublicationRepository,
 	logger *slog.Logger,
 ) AgentManagerService {
 	return &agentManagerService{
@@ -160,6 +162,7 @@ func NewAgentManagerService(
 		gatewayEventsService:      gatewayEventsService,
 		exposure:                  exposure,
 		restAgentKind:             restAgentKind,
+		publicationRepo:           publicationRepo,
 		artifactRepo:              artifactRepo,
 		aiApplicationService:      aiApplicationService,
 		gatewayRepo:               gatewayRepo,
@@ -3362,6 +3365,7 @@ func (s *agentManagerService) DeleteAgent(ctx context.Context, ouID string, proj
 			if configErr := s.agentConfigRepo.DeleteAllByAgent(ctx, ouID, projectName, agentName); configErr != nil {
 				s.logger.Warn("Failed to delete agent configs from database", "agentName", agentName, "error", configErr)
 			}
+			s.deleteAgentPublications(ctx, ouID, projectName, agentName)
 			artifactErr := s.deleteAgentAPIArtifact(ctx, ouID, projectName, agentName, isA2AAgent)
 			if s.agentThunderProvisioning != nil {
 				go s.agentThunderProvisioning.DeleteAllBindings(context.WithoutCancel(ctx), ouID, projectName, agentName)
@@ -3394,6 +3398,7 @@ func (s *agentManagerService) DeleteAgent(ctx context.Context, ouID string, proj
 		s.logger.Warn("Failed to delete agent configs from database", "agentName", agentName, "error", configErr)
 		// Don't fail the deletion - configs will be orphaned but harmless
 	}
+	s.deleteAgentPublications(ctx, ouID, projectName, agentName)
 
 	// Cleanup env-scoped API artifact record.
 	artifactErr := s.deleteAgentAPIArtifact(ctx, ouID, projectName, agentName, isA2AAgent)
@@ -3508,7 +3513,24 @@ func (s *agentManagerService) clearInheritedA2AState(ctx context.Context, ouID, 
 			return fmt.Errorf("failed to clear leftover A2A publication and proxy rows: %w", err)
 		}
 	}
+	// Not A2A, but the same hazard: a new agent must not inherit a deleted one's portal listing.
+	if s.publicationRepo != nil {
+		if err := s.publicationRepo.DeleteForAgent(ctx, ouID, projectName, agentName); err != nil {
+			return fmt.Errorf("failed to clear a leftover Agent Portal publication: %w", err)
+		}
+	}
 	return nil
+}
+
+// deleteAgentPublications removes a deleted agent from the Agent Portal. Best-effort like the
+// agent-config cleanup beside it: a leftover row is cleared when an agent of the same name is created.
+func (s *agentManagerService) deleteAgentPublications(ctx context.Context, ouID, projectName, agentName string) {
+	if s.publicationRepo == nil {
+		return
+	}
+	if err := s.publicationRepo.DeleteForAgent(ctx, ouID, projectName, agentName); err != nil {
+		s.logger.Warn("Failed to delete the agent's Agent Portal publication", "agentName", agentName, "error", err)
+	}
 }
 
 // cleanupAgentMonitors removes all monitors owned by an agent. Best-effort: orphaned
