@@ -54,8 +54,23 @@ const legacyTestKeyName = "console-test"
 // Hashing keeps the name within the gateway's alphanumeric-hyphen constraint
 // and avoids storing raw user identifiers as key names.
 func testKeyName(userSub string) string {
+	return userKeyName(models.APIKeyTestKeyPrefix, userSub)
+}
+
+// portalChatKeyName is testKeyName for the key a user chats through in the Agent Portal.
+func portalChatKeyName(userSub string) string {
+	return userKeyName(models.APIKeyPortalChatKeyPrefix, userSub)
+}
+
+func userKeyName(prefix, userSub string) string {
 	h := sha256.Sum256([]byte(userSub))
-	return models.APIKeyTestKeyPrefix + hex.EncodeToString(h[:])[:12]
+	return prefix + hex.EncodeToString(h[:])[:12]
+}
+
+// isReservedKeyName is true for names the platform issues itself; users cannot create them.
+func isReservedKeyName(name string) bool {
+	return strings.HasPrefix(name, models.APIKeyTestKeyPrefix) || name == legacyTestKeyName ||
+		strings.HasPrefix(name, models.APIKeyPortalChatKeyPrefix)
 }
 
 // AgentAPIKeyServiceInterface defines the contract for agent API key operations
@@ -169,8 +184,9 @@ func (s *AgentAPIKeyService) CreateAPIKey(
 	ouID, projectName, agentName, envID string,
 	req *models.CreateAPIKeyRequest,
 ) (*models.CreateAPIKeyResponse, error) {
-	if req != nil && (strings.HasPrefix(req.Name, models.APIKeyTestKeyPrefix) || req.Name == legacyTestKeyName) {
-		return nil, fmt.Errorf("%w: names starting with %q are reserved for console test keys", utils.ErrBadRequest, models.APIKeyTestKeyPrefix)
+	if req != nil && isReservedKeyName(req.Name) {
+		return nil, fmt.Errorf("%w: names starting with %q or %q are reserved for platform-issued keys",
+			utils.ErrBadRequest, models.APIKeyTestKeyPrefix, models.APIKeyPortalChatKeyPrefix)
 	}
 	artifact, envUUID, err := s.resolveAgentAPIArtifact(ctx, ouID, projectName, agentName, envID)
 	if err != nil {
@@ -320,6 +336,44 @@ func (s *AgentAPIKeyService) IssueTestAPIKey(
 	ctx context.Context,
 	ouID, projectName, agentName, envID, userSub string,
 ) (*models.IssueTestAPIKeyResponse, error) {
+	return s.issueUserTestKey(ctx, userTestKey{
+		ouID: ouID, projectName: projectName, agentName: agentName, envID: envID,
+		keyName:     testKeyName(userSub),
+		displayName: "Console Try-It",
+		action:      audit.ActionAPIKeyIssueTest,
+	})
+}
+
+// IssuePortalChatKey issues (or rotates) the short-lived key an Agent Portal user chats with the
+// published agent through. It works like IssueTestAPIKey, with its own per-user key, so a
+// developer using Try-It and the portal on the same agent does not rotate one key out from
+// under the other. The key is hidden from user listings like a test key.
+func (s *AgentAPIKeyService) IssuePortalChatKey(
+	ctx context.Context,
+	ouID, projectName, agentName, envName, userSub, publicationID string,
+) (*models.IssueTestAPIKeyResponse, error) {
+	return s.issueUserTestKey(ctx, userTestKey{
+		ouID: ouID, projectName: projectName, agentName: agentName, envID: envName,
+		keyName:     portalChatKeyName(userSub),
+		displayName: "Agent Portal chat",
+		action:      audit.ActionAPIKeyIssuePortalChat,
+		auditExtra:  []audit.Option{audit.Detail("publicationId", publicationID)},
+	})
+}
+
+// userTestKey is one per-user, short-lived key issue: which agent environment, under which name,
+// and how the issue is audited.
+type userTestKey struct {
+	ouID, projectName, agentName, envID string
+	keyName, displayName                string
+	action                              audit.Action
+	auditExtra                          []audit.Option
+}
+
+// issueUserTestKey creates the user's key, or rotates it when it exists, on every gateway serving
+// the agent's environment, with a testKeyTTL expiry.
+func (s *AgentAPIKeyService) issueUserTestKey(ctx context.Context, k userTestKey) (*models.IssueTestAPIKeyResponse, error) {
+	ouID, projectName, agentName, envID, keyName := k.ouID, k.projectName, k.agentName, k.envID, k.keyName
 	artifact, envUUID, err := s.resolveAgentAPIArtifact(ctx, ouID, projectName, agentName, envID)
 	if err != nil {
 		return nil, err
@@ -330,7 +384,6 @@ func (s *AgentAPIKeyService) IssueTestAPIKey(
 	}
 	artifactUUID := artifact.UUID.String()
 
-	keyName := testKeyName(userSub)
 	expiresAt := time.Now().UTC().Add(testKeyTTL).Format(time.RFC3339)
 
 	existing, err := s.apiKeyRepo.GetByArtifactAndName(artifactUUID, keyName)
@@ -342,31 +395,30 @@ func (s *AgentAPIKeyService) IssueTestAPIKey(
 	var resp *models.CreateAPIKeyResponse
 	if existing != nil {
 		if existing.Purpose != models.APIKeyPurposeTest {
-			return nil, fmt.Errorf("%w: %q is reserved for console test keys", utils.ErrBadRequest, keyName)
+			return nil, fmt.Errorf("%w: %q is reserved for platform-issued keys", utils.ErrBadRequest, keyName)
 		}
 		// Same DB row, new hash + expiry; purpose is preserved (Upsert.DoUpdates excludes it).
 		resp, err = s.broadcaster.broadcastRotateToGateways(gateways, ouID, artifactUUID, artifactUUID, keyName,
 			&models.RotateAPIKeyRequest{ExpiresAt: &expiresAt})
 		if err == nil {
-			log.Info("IssueTestAPIKey: rotated", "keyName", keyName, "org", ouID, "agent", agentName, "env", envID, "expiresAt", expiresAt)
+			log.Info("Short-lived user key rotated", "action", k.action, "keyName", keyName, "org", ouID, "agent", agentName, "env", envID, "expiresAt", expiresAt)
 		}
 	} else {
 		resp, err = s.broadcaster.broadcastCreateToGateways(gateways, ouID, artifactUUID, artifactUUID,
 			&models.CreateAPIKeyRequest{
 				Name:        keyName,
-				DisplayName: "Console Try-It",
+				DisplayName: k.displayName,
 				Purpose:     models.APIKeyPurposeTest,
 				ExpiresAt:   &expiresAt,
 			})
 		if err == nil {
-			log.Info("IssueTestAPIKey: created", "keyName", keyName, "org", ouID, "agent", agentName, "env", envID, "expiresAt", expiresAt)
+			log.Info("Short-lived user key created", "action", k.action, "keyName", keyName, "org", ouID, "agent", agentName, "env", envID, "expiresAt", expiresAt)
 		}
 	}
-	// Recorded after the fact rather than fail-closed: a console test key is
-	// short-lived and scoped to the requesting user, so refusing the Try-It
-	// flow when the trail is unavailable would cost more than it protects.
-	audit.Record(
-		ctx, audit.ActionAPIKeyIssueTest,
+	// Recorded after the fact rather than fail-closed: these keys are
+	// short-lived and scoped to the requesting user, so refusing Try-It or a
+	// portal chat when the trail is unavailable would cost more than it protects.
+	opts := []audit.Option{
 		audit.Org(ouID),
 		audit.ResourceNamed(audit.ResourceAPIKey, artifactUUID, keyName),
 		audit.Project(projectName),
@@ -377,7 +429,8 @@ func (s *AgentAPIKeyService) IssueTestAPIKey(
 		audit.Detail("expiresAt", expiresAt),
 		audit.Detail("rotated", existing != nil),
 		audit.Result(err),
-	)
+	}
+	audit.Record(ctx, k.action, append(opts, k.auditExtra...)...)
 
 	if err != nil {
 		return nil, err

@@ -100,6 +100,7 @@ var serviceProviderSet = wire.NewSet(
 	services.NewA2AProxyService,
 	ProvideA2AProxyHooks,
 	ProvideAgentPublicationService,
+	ProvidePortalService,
 	services.NewEvaluatorManagerService,
 	services.NewEnvironmentService,
 	ProvidePlatformGatewayService,
@@ -164,6 +165,7 @@ var controllerProviderSet = wire.NewSet(
 	controllers.NewA2AAgentCardController,
 	controllers.NewA2AProxyController,
 	controllers.NewAgentPublicationController,
+	controllers.NewPortalController,
 	controllers.NewLLMProxyDeploymentController,
 	controllers.NewMCPProxyController,
 	controllers.NewProjectMCPProxyController,
@@ -608,6 +610,20 @@ func ProvideAgentPublicationService(
 	logger *slog.Logger,
 ) services.AgentPublicationService {
 	return services.NewAgentPublicationService(repo, agentConfigRepo, ocClient, agentService, cfg.PortalPublicOrigin, logger)
+}
+
+// ProvidePortalService passes the portal origin from config, the agent service's endpoint lookup
+// and the API key service's portal chat-key issue.
+func ProvidePortalService(
+	cfg *config.Config,
+	repo repositories.AgentPublicationRepository,
+	agentConfigRepo repositories.AgentConfigRepository,
+	ocClient occlient.OpenChoreoClient,
+	agentService services.AgentManagerService,
+	apiKeyService *services.AgentAPIKeyService,
+	logger *slog.Logger,
+) services.PortalService {
+	return services.NewPortalService(repo, agentConfigRepo, ocClient, agentService, apiKeyService, cfg.PortalPublicOrigin, logger)
 }
 
 // ProvideA2AProxyHooks gives the card service the proxy hooks only, not the whole proxy service.

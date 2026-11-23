@@ -38,6 +38,9 @@ const (
 	// Each user gets their own row (prefix + truncated SHA-256 of their JWT sub),
 	// so concurrent sessions across users don't invalidate each other's keys.
 	APIKeyTestKeyPrefix = "console-test-"
+	// APIKeyPortalChatKeyPrefix names the per-user keys Agent Portal users chat with. They are test
+	// keys too, but a separate row from Try-It's, so using both does not rotate one out from under the other.
+	APIKeyPortalChatKeyPrefix = "portal-"
 	// MinAPIKeyNameLength is the shortest key name the gateway accepts. It
 	// rejects shorter names asynchronously, after the API has answered.
 	MinAPIKeyNameLength = 3

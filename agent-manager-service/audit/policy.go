@@ -286,6 +286,9 @@ var actionOverrides = map[string]Action{
 	"PUT /orgs/{orgName}/projects/{projName}/agents/{agentName}/environments/{envID}/api-keys/{keyName}":    "api-key:rotate",
 	"DELETE /orgs/{orgName}/projects/{projName}/agents/{agentName}/environments/{envID}/api-keys/{keyName}": "api-key:revoke",
 
+	// The Agent Portal chat key is an API key issue, not a use of the agent-portal:chat permission.
+	"POST /orgs/{orgName}/portal/agents/{publicationId}/chat-key": "api-key:issue-portal-chat",
+
 	// One permission, several operations — LLM provider / proxy API keys.
 	"POST /orgs/{orgName}/llm-providers/{id}/api-keys":                               "api-key:create",
 	"PUT /orgs/{orgName}/llm-providers/{id}/api-keys/{keyName}":                      "api-key:rotate",

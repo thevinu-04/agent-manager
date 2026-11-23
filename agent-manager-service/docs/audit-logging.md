@@ -308,6 +308,7 @@ The operations below emit a record describing what actually changed, not just th
 |---|---|---|
 | API keys | `api-key:create` / `:rotate` / `:revoke` (agent, LLM provider, LLM proxy) | Fail-closed |
 | API keys | `api-key:issue-test` (console Try-It) | Fail-open |
+| API keys | `api-key:issue-portal-chat` (Agent Portal chat key) | Fail-open |
 | Git secrets | `git-secret:create` / `:delete` | Fail-closed |
 | Gateway tokens | `gateway-token:rotate` / `:revoke` | Fail-closed |
 | Agent tokens | `agent-token:mint`, `agent-token:regenerate-tracing` | Fail-closed |
@@ -366,6 +367,7 @@ The registry is the source of truth (`audit/actions.go`, `audit/actions_domain.g
 | `agent:set-a2a-proxy` | credential | 4 critical | `agentName`, `upstreamAuthChanged`, `upstreamAuthHeader` |
 | `agent:set-card-source` | config | 1 info | `agentName`, `sourceUrl` |
 | `api-key:create` | credential | 4 critical | `expiresAt`, `gatewayConnected`, `gatewayCount`, `keyName`, `ownerName`, `ownerType` |
+| `api-key:issue-portal-chat` | credential | 2 notice | `expiresAt`, `keyName`, `ownerName`, `ownerType`, `publicationId`, `rotated` |
 | `api-key:issue-test` | credential | 2 notice | `expiresAt`, `keyName`, `ownerName`, `ownerType`, `rotated` |
 | `api-key:revoke` | credential | 4 critical | `gatewayCount`, `keyName`, `ownerName`, `ownerType` |
 | `api-key:rotate` | credential | 4 critical | `expiresAt`, `gatewayConnected`, `gatewayCount`, `keyName`, `ownerName`, `ownerType` |

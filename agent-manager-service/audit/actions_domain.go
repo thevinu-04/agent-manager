@@ -29,6 +29,9 @@ const (
 	ActionAPIKeyRotate    Action = "api-key:rotate"
 	ActionAPIKeyRevoke    Action = "api-key:revoke"
 	ActionAPIKeyIssueTest Action = "api-key:issue-test"
+	// ActionAPIKeyIssuePortalChat is an Agent Portal user getting the short-lived key they chat
+	// with a published agent through.
+	ActionAPIKeyIssuePortalChat Action = "api-key:issue-portal-chat"
 	// ActionAPIKeySync is a data-plane gateway pulling the key material it is
 	// entitled to. Recorded because a compromised gateway credential harvesting
 	// keys looks exactly like a legitimate sync until you can see who pulled
@@ -230,6 +233,17 @@ func init() {
 		"keyName":   KindName,
 		"expiresAt": KindName,
 		"rotated":   KindFlag,
+	})
+	// Agent Portal chat keys live as long as Try-It keys and are scoped to one user and agent,
+	// so they are recorded at the same severity.
+	Register(ActionAPIKeyIssuePortalChat, ClassCredential, SeverityNotice)
+	RegisterDetailSchema(ActionAPIKeyIssuePortalChat, map[string]FieldKind{
+		"ownerType":     KindEnum,
+		"ownerName":     KindName,
+		"keyName":       KindName,
+		"expiresAt":     KindName,
+		"rotated":       KindFlag,
+		"publicationId": KindIdentifier,
 	})
 
 	// A read, not a change, so it is a notice rather than critical.

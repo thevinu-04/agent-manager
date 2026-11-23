@@ -93,6 +93,33 @@ func FirstFailedPublicationCheck(checks []AgentPublicationCheck) *AgentPublicati
 	return nil
 }
 
+// PortalAgent is a published agent as portal users see it.
+type PortalAgent struct {
+	Publication AgentPublication
+	// Available is false while the agent cannot be chatted with: suspended or undeployed, CORS no
+	// longer allowing the portal, or API-key security off.
+	Available bool
+}
+
+// PortalAgentPage is one page of the portal catalog.
+type PortalAgentPage struct {
+	Agents []PortalAgent
+	// Tags is every tag the organization's publications use, for the tag filter.
+	Tags   []string
+	Total  int64
+	Limit  int
+	Offset int
+}
+
+// PortalChatKey is what the portal needs to chat with an agent through its gateway.
+type PortalChatKey struct {
+	APIKey           string
+	ExpiresAt        string
+	GatewayConnected bool
+	// ChatURL is the agent's chat-api endpoint the browser posts to.
+	ChatURL string
+}
+
 // AgentPublicationFilter narrows the portal catalog. Empty fields match everything.
 type AgentPublicationFilter struct {
 	// Search is a case-insensitive substring of the display name or description.

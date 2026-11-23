@@ -27,7 +27,7 @@ type PortalAgent struct {
 	IconUrl     *string   `json:"iconUrl,omitempty"`
 	Tags        []string  `json:"tags"`
 	UpdatedAt   time.Time `json:"updatedAt"`
-	// False when the agent is suspended or undeployed, or its CORS no longer allows the portal's origin. The agent stays listed so portal users can see it, but a chat key request returns 409 until its owner fixes it.
+	// False when the agent is suspended or undeployed, its CORS no longer allows the portal's origin, or API-key security is off. The agent stays listed so portal users can see it, but a chat key request returns 409 until its owner fixes it.
 	Available bool `json:"available"`
 }
 

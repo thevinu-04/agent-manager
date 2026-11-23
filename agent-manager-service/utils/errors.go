@@ -345,6 +345,11 @@ var (
 	// ErrAgentPublishedElsewhere means the agent is published from another environment; it must be
 	// unpublished there first. Maps to 409.
 	ErrAgentPublishedElsewhere = errors.New("the agent is already published to the Agent Portal from another environment")
+	// ErrPortalAgentNotFound means no agent is published under that ID in the organization. Maps to 404.
+	ErrPortalAgentNotFound = errors.New("no such published agent")
+	// ErrPortalAgentUnavailable means the published agent cannot be chatted with right now
+	// (suspended, undeployed, or its settings no longer allow the portal). Maps to 409.
+	ErrPortalAgentUnavailable = errors.New("this agent is temporarily unavailable; contact its owner")
 )
 
 // Project-scoped MCP proxy errors.

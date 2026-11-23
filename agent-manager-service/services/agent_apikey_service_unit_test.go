@@ -259,6 +259,38 @@ func TestAgentAPIKeyService_IssueTestAPIKey_PerUser(t *testing.T) {
 	})
 }
 
+func TestAgentAPIKeyService_IssuePortalChatKey(t *testing.T) {
+	const org, proj, agent, env, pubID = "default", "default", "customeragent", "dev", "6f1c2c64-6a51-4f0e-9f53-2f2b5c0f6a11"
+
+	t.Run("issues a per-user test key under its own name", func(t *testing.T) {
+		fx := newAPIKeyServiceFixture(t, nil)
+
+		resp, err := fx.svc.IssuePortalChatKey(auditableCtx(t), org, proj, agent, env, "user-a-sub", pubID)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, resp.APIKey)
+		assert.NotEmpty(t, resp.ExpiresAt)
+		require.Len(t, *fx.upsertedKeys, 1)
+		stored := (*fx.upsertedKeys)[0]
+		assert.True(t, strings.HasPrefix(stored.Name, models.APIKeyPortalChatKeyPrefix))
+		assert.Equal(t, models.APIKeyPurposeTest, stored.Purpose, "hidden from key listings like Try-It keys")
+	})
+
+	t.Run("does not share the user's Try-It key", func(t *testing.T) {
+		fx := newAPIKeyServiceFixture(t, nil)
+
+		_, err := fx.svc.IssueTestAPIKey(auditableCtx(t), org, proj, agent, env, "user-a-sub")
+		require.NoError(t, err)
+		_, err = fx.svc.IssuePortalChatKey(auditableCtx(t), org, proj, agent, env, "user-a-sub", pubID)
+		require.NoError(t, err)
+
+		require.Len(t, *fx.upsertedKeys, 2)
+		assert.Equal(t, expectedTestKeyName("user-a-sub"), (*fx.upsertedKeys)[0].Name, "Try-It keeps its name")
+		assert.NotEqual(t, (*fx.upsertedKeys)[0].Name, (*fx.upsertedKeys)[1].Name,
+			"chatting in the portal must not rotate the user's Try-It key")
+	})
+}
+
 func TestAgentAPIKeyCreateOnRestApiArtifact(t *testing.T) {
 	fx := newAPIKeyServiceFixture(t, nil)
 	fx.artifactRepo.GetByHandleFunc = func(string, string) (*models.Artifact, error) {
@@ -370,6 +402,16 @@ func TestAgentAPIKeyService_CreateAPIKey_ReservedTestKeyPrefix(t *testing.T) {
 			&models.CreateAPIKeyRequest{Name: models.APIKeyTestKeyPrefix + "deadbeef0123"})
 
 		assert.ErrorIs(t, err, utils.ErrBadRequest)
+	})
+
+	t.Run("rejects names with the portal chat-key prefix", func(t *testing.T) {
+		fx := newAPIKeyServiceFixture(t, nil)
+
+		_, err := fx.svc.CreateAPIKey(auditableCtx(t), org, proj, agent, env,
+			&models.CreateAPIKeyRequest{Name: models.APIKeyPortalChatKeyPrefix + "deadbeef0123"})
+
+		assert.ErrorIs(t, err, utils.ErrBadRequest)
+		assert.Empty(t, *fx.upsertedKeys)
 	})
 
 	t.Run("reports gateway websocket connectivity in the response", func(t *testing.T) {
