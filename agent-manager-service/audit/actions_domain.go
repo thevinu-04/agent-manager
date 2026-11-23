@@ -125,6 +125,10 @@ const (
 	ActionAgentSetA2AProxy    Action = "agent:set-a2a-proxy"
 	ActionAgentRemoveA2AProxy Action = "agent:remove-a2a-proxy"
 
+	// Agent Portal: listing an agent for everyone in the organization, or withdrawing it.
+	ActionAgentPublishToPortal     Action = "agent:publish-to-portal"
+	ActionAgentUnpublishFromPortal Action = "agent:unpublish-from-portal"
+
 	// Platform: gateways and their trust configuration.
 	ActionGatewayCreate                 Action = "gateway:create"
 	ActionGatewayUpdate                 Action = "gateway:update"
@@ -496,6 +500,17 @@ func init() {
 	}
 	registerCredential(ActionAgentSetA2AProxy, a2aProxyFields)
 	registerCredential(ActionAgentRemoveA2AProxy, a2aProxyFields)
+	// Not a credential, but it changes who in the organization can reach the agent, and its CORS.
+	agentPortalFields := map[string]FieldKind{
+		"agentName":         KindName,
+		"displayName":       KindName,
+		"corsOriginAdded":   KindFlag,
+		"corsOriginRemoved": KindFlag,
+	}
+	Register(ActionAgentPublishToPortal, ClassConfig, SeverityWarning)
+	RegisterDetailSchema(ActionAgentPublishToPortal, agentPortalFields)
+	Register(ActionAgentUnpublishFromPortal, ClassConfig, SeverityWarning)
+	RegisterDetailSchema(ActionAgentUnpublishFromPortal, agentPortalFields)
 	Register(ActionAgentConfigDelete, ClassConfig, SeverityNotice)
 	RegisterDetailSchema(ActionAgentConfigDelete, map[string]FieldKind{
 		"configName":       KindName,

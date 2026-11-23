@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/wso2/agent-manager/agent-manager-service/audit"
 	"github.com/wso2/agent-manager/agent-manager-service/clients/openchoreosvc/client"
 	"github.com/wso2/agent-manager/agent-manager-service/middleware/jwtassertion"
 	"github.com/wso2/agent-manager/agent-manager-service/models"
@@ -166,16 +167,38 @@ func (s *agentPublicationService) Publish(
 		return nil, publishedElsewhere(existing.EnvironmentName)
 	}
 
-	originAdded := false
+	// Publishing exposes the agent to the whole organization and can restart it, so it is refused
+	// when it cannot be recorded. Everything before this point changes nothing.
+	attempt, err := s.beginAudit(ctx, audit.ActionAgentPublishToPortal, agent, ouID, projectName, env.Name,
+		audit.Detail("displayName", req.DisplayName))
+	if err != nil {
+		return nil, err
+	}
+	pub, originAdded, originRemoved, err := s.applyPublish(ctx, ouID, projectName, agentName, env, envUUID, req, apiCfg)
+	attempt.Complete(ctx, err, audit.Detail("corsOriginAdded", originAdded), audit.Detail("corsOriginRemoved", originRemoved))
+	if err != nil {
+		return nil, err
+	}
+	s.logger.Info("Agent published to the Agent Portal", "ouID", ouID, "projectName", projectName,
+		"agentName", agentName, "environment", env.Name, "corsOriginAdded", originAdded)
+	return pub, nil
+}
+
+// applyPublish adds the portal origin when missing and saves the listing. It reports whether it
+// added the origin and, when the save failed, whether it took the origin back out.
+func (s *agentPublicationService) applyPublish(
+	ctx context.Context, ouID, projectName, agentName string, env *models.EnvironmentResponse, envUUID uuid.UUID,
+	req models.AgentPublicationRequest, apiCfg resolvedCORSConfig,
+) (pub *models.AgentPublication, originAdded, originRemoved bool, err error) {
 	if !originAllowed(apiCfg.CORSAllowOrigins, s.portalOrigin) {
 		origins := append(slices.Clone(apiCfg.CORSAllowOrigins), s.portalOrigin)
-		if err := s.setCORSOrigins(ctx, ouID, projectName, agentName, envName, origins); err != nil {
-			return nil, fmt.Errorf("failed to add the Agent Portal origin to the agent's CORS: %w", err)
+		if err := s.setCORSOrigins(ctx, ouID, projectName, agentName, env.Name, origins); err != nil {
+			return nil, false, false, fmt.Errorf("failed to add the Agent Portal origin to the agent's CORS: %w", err)
 		}
 		originAdded = true
 	}
 
-	pub, err := s.repo.Upsert(ctx, &models.AgentPublication{
+	pub, err = s.repo.Upsert(ctx, &models.AgentPublication{
 		OUID:            ouID,
 		ProjectName:     projectName,
 		AgentName:       agentName,
@@ -191,21 +214,43 @@ func (s *agentPublicationService) Publish(
 	if err != nil {
 		if originAdded {
 			// Nothing was listed, so the origin this call added must not outlive it.
-			s.removePortalOrigin(ctx, ouID, projectName, agentName, envName)
+			originRemoved = s.removePortalOrigin(ctx, ouID, projectName, agentName, env.Name)
 		}
 		if errors.Is(err, repositories.ErrAgentPublishedFromOtherEnvironment) {
 			// Lost a race with a publish from another environment.
-			return nil, publishedElsewhere("")
+			return nil, originAdded, originRemoved, publishedElsewhere("")
 		}
-		return nil, fmt.Errorf("failed to save the publication: %w", err)
+		return nil, originAdded, originRemoved, fmt.Errorf("failed to save the publication: %w", err)
 	}
-	s.logger.Info("Agent published to the Agent Portal", "ouID", ouID, "projectName", projectName,
-		"agentName", agentName, "environment", env.Name, "corsOriginAdded", originAdded)
-	return pub, nil
+	return pub, originAdded, false, nil
+}
+
+// beginAudit writes the intent record, or refuses the change with the error that maps to a 503.
+func (s *agentPublicationService) beginAudit(
+	ctx context.Context, action audit.Action, agent *models.AgentResponse, ouID, projectName, envName string, opts ...audit.Option,
+) (*audit.Attempt, error) {
+	all := append([]audit.Option{
+		audit.Org(ouID),
+		audit.ResourceNamed(audit.ResourceAgent, agent.UUID, agent.Name),
+		audit.Project(projectName),
+		audit.Environment(envName),
+		audit.Detail("agentName", agent.Name),
+	}, opts...)
+	attempt, err := audit.Begin(ctx, action, all...)
+	if err == nil {
+		return attempt, nil
+	}
+	s.logger.Error("Refusing the Agent Portal change: audit record could not be written",
+		"action", action, "agentName", agent.Name, "error", err)
+	if errors.Is(err, audit.ErrRecorderUnavailable) {
+		return nil, err
+	}
+	return nil, fmt.Errorf("%w: %w", audit.ErrRecorderUnavailable, err)
 }
 
 func (s *agentPublicationService) Unpublish(ctx context.Context, ouID, projectName, agentName, envName string) error {
-	if _, err := getAgent(ctx, s.ocClient, ouID, projectName, agentName); err != nil {
+	agent, err := getAgent(ctx, s.ocClient, ouID, projectName, agentName)
+	if err != nil {
 		return err
 	}
 	env, err := requireEnvironmentTier(ctx, s.ocClient, s.logger, ouID, envName)
@@ -216,17 +261,28 @@ func (s *agentPublicationService) Unpublish(ctx context.Context, ouID, projectNa
 	if err != nil {
 		return err
 	}
+	attempt, err := s.beginAudit(ctx, audit.ActionAgentUnpublishFromPortal, agent, ouID, projectName, env.Name)
+	if err != nil {
+		return err
+	}
 	removed, err := s.repo.Delete(ctx, ouID, projectName, agentName, envUUID)
 	if errors.Is(err, repositories.ErrAgentPublicationNotFound) {
-		return utils.ErrAgentNotPublished
+		err = utils.ErrAgentNotPublished
+	} else if err != nil {
+		err = fmt.Errorf("failed to remove the publication: %w", err)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to remove the publication: %w", err)
+		attempt.Complete(ctx, err)
+		return err
 	}
-	// Best effort: the listing is gone and no new keys are issued, so a leftover origin is harmless.
+	// Best effort: the listing is gone and no new keys are issued, so a leftover origin is
+	// harmless. The record shows it: corsOriginAdded without corsOriginRemoved.
+	originRemoved := false
 	if removed.CORSOriginAdded {
-		s.removePortalOrigin(ctx, ouID, projectName, agentName, envName)
+		originRemoved = s.removePortalOrigin(ctx, ouID, projectName, agentName, envName)
 	}
+	attempt.Complete(ctx, nil, audit.Detail("displayName", removed.DisplayName),
+		audit.Detail("corsOriginAdded", removed.CORSOriginAdded), audit.Detail("corsOriginRemoved", originRemoved))
 	s.logger.Info("Agent unpublished from the Agent Portal", "ouID", ouID, "projectName", projectName,
 		"agentName", agentName, "environment", env.Name)
 	return nil
@@ -291,25 +347,28 @@ func (s *agentPublicationService) setCORSOrigins(ctx context.Context, ouID, proj
 
 // removePortalOrigin takes the portal origin back out of the agent's CORS. It never fails the
 // caller: a leftover origin only lets the portal's browser tabs reach an agent they hold no key for.
-func (s *agentPublicationService) removePortalOrigin(ctx context.Context, ouID, projectName, agentName, envName string) {
+// It reports whether the origin is gone from the agent's CORS.
+func (s *agentPublicationService) removePortalOrigin(ctx context.Context, ouID, projectName, agentName, envName string) bool {
 	log := s.logger.With("ouID", ouID, "projectName", projectName, "agentName", agentName, "environment", envName)
 	cfg, err := s.agentConfigRepo.Get(ctx, ouID, projectName, agentName, envName)
 	if err != nil {
 		log.Error("Could not read the agent's CORS to remove the Agent Portal origin; it is left in place", "error", err)
-		return
+		return false
 	}
 	origins := slices.DeleteFunc(slices.Clone(cfg.CORSAllowOrigins), func(o string) bool { return o == s.portalOrigin })
 	if len(origins) == len(cfg.CORSAllowOrigins) {
-		return
+		return true
 	}
 	if len(origins) == 0 {
 		// The deploy-settings merge reads an empty list as "no change", so it cannot be emptied.
 		log.Warn("The Agent Portal origin is the agent's only CORS origin, so it is left in place")
-		return
+		return false
 	}
 	if err := s.setCORSOrigins(ctx, ouID, projectName, agentName, envName, origins); err != nil {
 		log.Error("Could not remove the Agent Portal origin from the agent's CORS; it is left in place", "error", err)
+		return false
 	}
+	return true
 }
 
 // originAllowed is true when CORS already lets origin in, by name or by wildcard.

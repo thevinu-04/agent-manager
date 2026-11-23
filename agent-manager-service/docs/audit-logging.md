@@ -329,6 +329,7 @@ The operations below emit a record describing what actually changed, not just th
 | Agent config | `agent-config:update` / `:delete` | Fail-open |
 | A2A card source | `agent:set-card-source` / `agent:remove-card-source` | Fail-open |
 | A2A proxy | `agent:set-a2a-proxy` / `agent:remove-a2a-proxy` | Fail-closed |
+| Agent Portal | `agent:publish-to-portal` / `agent:unpublish-from-portal` | Fail-closed |
 | Per-config API keys | `api-key:create` / `:rotate` / `:revoke` (model-config, mcp-config) | Fail-closed |
 | Monitors | `monitor:create` / `:update` / `:delete` / `:start` / `:stop` / `:rerun` | Fail-open |
 | Monitors | `monitor:run-failed` (scheduler, system actor) | Fail-open |
@@ -361,11 +362,13 @@ The registry is the source of truth (`audit/actions.go`, `audit/actions_domain.g
 | `agent:delete` | config | 3 warning | `agentName` |
 | `agent:deploy` | deployment | 2 notice | `agentName`, `environment`, `imageId`, `isProduction` |
 | `agent:promote` | deployment | 3 warning | `agentName`, `environment`, `isProduction`, `sourceEnv`, `targetEnv` |
+| `agent:publish-to-portal` | config | 3 warning | `agentName`, `corsOriginAdded`, `corsOriginRemoved`, `displayName` |
 | `agent:read` | read | 1 info | — |
 | `agent:remove-a2a-proxy` | credential | 4 critical | `agentName`, `upstreamAuthChanged`, `upstreamAuthHeader` |
 | `agent:remove-card-source` | config | 2 notice | `agentName` |
 | `agent:set-a2a-proxy` | credential | 4 critical | `agentName`, `upstreamAuthChanged`, `upstreamAuthHeader` |
 | `agent:set-card-source` | config | 1 info | `agentName`, `sourceUrl` |
+| `agent:unpublish-from-portal` | config | 3 warning | `agentName`, `corsOriginAdded`, `corsOriginRemoved`, `displayName` |
 | `api-key:create` | credential | 4 critical | `expiresAt`, `gatewayConnected`, `gatewayCount`, `keyName`, `ownerName`, `ownerType` |
 | `api-key:issue-portal-chat` | credential | 2 notice | `expiresAt`, `keyName`, `ownerName`, `ownerType`, `publicationId`, `rotated` |
 | `api-key:issue-test` | credential | 2 notice | `expiresAt`, `keyName`, `ownerName`, `ownerType`, `rotated` |

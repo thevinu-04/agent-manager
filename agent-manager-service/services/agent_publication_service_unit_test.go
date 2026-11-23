@@ -459,6 +459,30 @@ func TestPublishReportsAFailedCORSUpdateWithoutListing(t *testing.T) {
 	assert.Empty(t, f.upserted, "an agent the portal cannot reach is not listed")
 }
 
+// A caller allowed to publish, on a context with no audit recorder.
+func unrecordedPublisherCtx() context.Context {
+	return jwtassertion.ContextWithTokenClaimsAndScope(context.Background(), &jwtassertion.TokenClaims{
+		Sub:   pubPublisherSub,
+		OuId:  pubOUID,
+		Scope: audit.ScopesOf([]rbac.Permission{rbac.AgentEnvNonProduction, rbac.AgentEnvProduction}),
+	})
+}
+
+func TestPublishIsRefusedWhenItCannotBeRecorded(t *testing.T) {
+	f := newPublicationFixture(t) // CORS changes stay disallowed
+	f.repo.UpsertFunc = nil       // must not be reached
+
+	_, err := f.svc().Publish(unrecordedPublisherCtx(), pubOUID, pubProject, pubAgent, pubEnv, validListing())
+	assert.ErrorIs(t, err, audit.ErrRecorderUnavailable)
+}
+
+func TestUnpublishIsRefusedWhenItCannotBeRecorded(t *testing.T) {
+	f := newPublicationFixture(t) // DeleteFunc stays nil: nothing may be removed
+
+	err := f.svc().Unpublish(unrecordedPublisherCtx(), pubOUID, pubProject, pubAgent, pubEnv)
+	assert.ErrorIs(t, err, audit.ErrRecorderUnavailable)
+}
+
 // ---- Unpublish ----
 
 func (f *publicationFixture) deleteReturns(row *models.AgentPublication, err error) {

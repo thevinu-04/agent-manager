@@ -66,6 +66,16 @@ func TestDomainActionsMatchRouteDerivedActions(t *testing.T) {
 			ActionAgentRemoveA2AProxy,
 		},
 		{
+			"PUT /orgs/{orgName}/projects/{projName}/agents/{agentName}/environments/{envID}/publication",
+			[]rbac.Permission{rbac.AgentUpdate, rbac.AgentEnvNonProduction},
+			ActionAgentPublishToPortal,
+		},
+		{
+			"DELETE /orgs/{orgName}/projects/{projName}/agents/{agentName}/environments/{envID}/publication",
+			[]rbac.Permission{rbac.AgentUpdate, rbac.AgentEnvNonProduction},
+			ActionAgentUnpublishFromPortal,
+		},
+		{
 			"POST /orgs/{orgName}/portal/agents/{publicationId}/chat-key",
 			[]rbac.Permission{rbac.AgentPortalChat},
 			ActionAPIKeyIssuePortalChat,
